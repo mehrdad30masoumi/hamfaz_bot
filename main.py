@@ -26,9 +26,9 @@ from telegram.ext import (
 # ══════════════════════════════════════════════════════════
 #  ۱. تنظیمات — فقط این بخش رو ویرایش کن
 # ══════════════════════════════════════════════════════════
-TOKEN     = '8360983813:AAGTx7aI4rW-CSbZN6_epxnevFEEG3Ruc8c'
-ADMIN_ID  = 1617627229
-DB_PATH   = 'hamfaz.db'
+TOKEN     = 'TOKEN_KHODET_RO_INJA_BZAR'
+ADMIN_ID  = 123456789
+DB_PATH   = os.environ.get('DB_PATH', 'hamfaz.db')
 
 # Channel Lock — برای غیرفعال کردن: None بذار
 FORCE_JOIN_CHANNEL = None  # مثال: '@hamfaz_official'
@@ -48,24 +48,29 @@ AD_TEXT = (
 #  ۲. ترجمه‌ها
 # ══════════════════════════════════════════════════════════
 TRANS = {
-    "Male": "پسر 👦", "Female": "دختر 👧",
-    "-18": "زیر ۱۸ سال 🍼", "18-25": "۱۸ تا ۲۵ سال 🧑‍🎓",
-    "25-35": "۲۵ تا ۳۵ سال 👨‍💼", "+35": "بالای ۳۵ سال 👴",
-    "Tehran": "تهران/کرج 🏙", "City": "مراکز استان 🏢",
-    "Other": "سایر شهرها 🏡", "Abroad": "خارج از ایران 🌍",
-    "Single": "سینگل 🦅", "InRel": "توی رابطه ❤️",
-    "Married": "متاهل 💍", "Complicated": "پیچیده 🌀",
-    "Game": "گیم و تکنولوژی 🎮", "Movie": "فیلم و سریال 🎬",
-    "Art": "هنر و موزیک 🎨", "Tech": "برنامه‌نویسی 💻",
-    "Sport": "ورزش ⚽️", "Trade": "بیزنس و ترید 💸",
-    "Rap": "رپ و هیپ‌هاپ 🤘", "Pop": "پاپ و سنتی 🎻",
-    "Rock": "راک و متال 🎸", "Electro": "الکترونیک 🎧",
-    "Extrovert": "برونگرا 🗣", "Introvert": "درونگرا 🧘",
-    "Logical": "منطقی 🧠", "Emotional": "احساسی ❤️",
-    "Vac_Cafe": "کافه و بام تهران ☕️", "Vac_Shomal": "ویلای شمال 🌲",
-    "Vac_Dubai": "سفر دبی/ترکیه ✈️", "Vac_Home": "گیم تو خونه 🎮",
-    "Phone_Apple": "فقط اپل 🍏", "Phone_Android": "اندروید 🤖",
-    "Phone_None": "فرقی نداره 🤷"
+    "Male":   "👦  پسر",   "Female": "👧  دختر",
+    "-18":    "🍼  زیر ۱۸ سال",   "18-25": "🎓  ۱۸ تا ۲۵ سال",
+    "25-35":  "💼  ۲۵ تا ۳۵ سال", "+35":   "👑  بالای ۳۵ سال",
+    "Tehran": "🏙  تهران و کرج",  "City":   "🏢  مراکز استان",
+    "Other":  "🏡  سایر شهرها",   "Abroad": "✈️  خارج از ایران",
+    "Single": "🦅  آزاد و سینگل", "InRel":  "💑  توی رابطه",
+    "Married":"💍  متاهل",         "Complicated": "🌀  پیچیده!",
+    "Game":   "🎮  گیم و تکنولوژی","Movie":  "🎬  فیلم و سریال",
+    "Art":    "🎨  هنر و موزیک",   "Tech":   "💻  برنامه‌نویسی",
+    "Sport":  "⚽  ورزش و فوتبال", "Trade":  "📈  بیزنس و ترید",
+    "Rap":    "🎤  رپ و هیپ‌هاپ", "Pop":    "🎵  پاپ و سنتی",
+    "Rock":   "🎸  راک و متال",    "Electro":"🎧  الکترونیک",
+    "Extrovert":"🗣  برونگرا — شلوغ و پرانرژی",
+    "Introvert": "🧘  درونگرا — آروم و متفکر",
+    "Logical":   "🧠  منطقی — با عقل تصمیم میگیرم",
+    "Emotional": "❤️  احساسی — با دل تصمیم میگیرم",
+    "Vac_Cafe":  "☕  کافه گردی و بام تهران",
+    "Vac_Shomal":"🌲  ویلا و جنگل شمال",
+    "Vac_Dubai": "🛫  سفر دبی و ترکیه",
+    "Vac_Home":  "🎮  راحت خونه با گیم",
+    "Phone_Apple":   "🍎  تیم اپل",
+    "Phone_Android": "🤖  تیم اندروید",
+    "Phone_None":    "🤷  برام مهم نیست"
 }
 
 logging.basicConfig(
@@ -373,6 +378,17 @@ async def do_disconnect(uid, bot, notify=True):
         )
     return partner
 
+def calc_score(u1, u2):
+    """امتیازدهی به میزان تشابه دو کاربر"""
+    score = 0
+    if u1.get('interest')    == u2.get('interest'):    score += 4
+    if u1.get('music')       == u2.get('music'):       score += 3
+    if u1.get('personality') == u2.get('personality'): score += 3
+    if u1.get('age')         == u2.get('age'):         score += 2
+    if u1.get('location')    == u2.get('location'):    score += 1
+    if u1.get('status')      == u2.get('status'):      score += 1
+    return score
+
 async def do_find_match(update, context, gender_f=None, location_f=None, is_vip=False):
     uid  = update.effective_user.id
     bot  = context.bot
@@ -399,6 +415,8 @@ async def do_find_match(update, context, gender_f=None, location_f=None, is_vip=
     async with _lock:
         if is_vip:
             # جستجو در صف معمولی با فیلتر
+            best_score = -1
+            best_candidate = None
             for candidate in list(waiting_queue):
                 if candidate == uid:
                     continue
@@ -408,11 +426,17 @@ async def do_find_match(update, context, gender_f=None, location_f=None, is_vip=
                 g_ok = (not gender_f)   or ci['gender']   == gender_f
                 l_ok = (not location_f) or ci['location'] == location_f
                 if g_ok and l_ok:
-                    partner = candidate
-                    waiting_queue.remove(candidate)
-                    break
+                    sc = calc_score(u_info, ci)
+                    if sc > best_score:
+                        best_score = sc
+                        best_candidate = candidate
+            if best_candidate:
+                partner = best_candidate
+                waiting_queue.remove(best_candidate)
             # جستجو در صف VIP
             if not partner:
+                best_score = -1
+                best_candidate = None
                 for item in list(vip_queue):
                     cid, cgf, clf = item
                     if cid == uid:
@@ -425,16 +449,31 @@ async def do_find_match(update, context, gender_f=None, location_f=None, is_vip=
                     th_g = (not gender_f)   or ci['gender']   == gender_f
                     th_l = (not location_f) or ci['location'] == location_f
                     if my_g and my_l and th_g and th_l:
-                        partner = cid
-                        vip_queue.remove(item)
-                        break
+                        sc = calc_score(u_info, ci)
+                        if sc > best_score:
+                            best_score = sc
+                            best_candidate = cid
+                            best_item = item
+                if best_candidate:
+                    partner = best_candidate
+                    vip_queue.remove(best_item)
         else:
-            # صف معمولی — اولین نفر آزاد
+            # صف معمولی — هوشمند: بهترین match از بین کسایی که در صفن
+            best_score = -1
+            best_candidate = None
             for candidate in list(waiting_queue):
-                if candidate != uid:
-                    partner = candidate
-                    waiting_queue.remove(candidate)
-                    break
+                if candidate == uid:
+                    continue
+                ci = get_user(candidate)
+                if not ci:
+                    continue
+                sc = calc_score(u_info, ci)
+                if sc > best_score:
+                    best_score = sc
+                    best_candidate = candidate
+            if best_candidate:
+                partner = best_candidate
+                waiting_queue.remove(best_candidate)
 
         if partner:
             connected_pairs[uid]     = partner
@@ -516,11 +555,13 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # کاربر جدید — شروع ثبت‌نام
     await update.message.reply_text("⏳", reply_markup=ReplyKeyboardRemove())
     await update.message.reply_text(
-        "👋 <b>به ربات هم‌فاز خوش اومدی!</b>\n\n"
-        "اینجا تو رو دقیقاً به کسی وصل می‌کنیم که <b>هم‌فرکانس</b> خودته! 🎯\n\n"
-        "آماده‌ای؟",
+        "🌀 <b>هم‌فاز</b>\n\n"
+        "جایی که آدم‌های هم‌فرکانس پیدا هم میشن.\n\n"
+        "━━━━━━━━━━━━━━━\n"
+        "چند تا سوال کوتاه ازت می‌پرسیم تا بهترین آدم رو برات پیدا کنیم 🎯\n\n"
+        "⏱ فقط ۱ دقیقه وقت میبره!",
         reply_markup=InlineKeyboardMarkup([[
-            InlineKeyboardButton("🚀 بزن بریم!", callback_data="go")
+            InlineKeyboardButton("شروع کن  🚀", callback_data="go")
         ]]),
         parse_mode=ParseMode.HTML
     )
@@ -576,7 +617,7 @@ def mkb(*rows):
 async def q_gender(u, c):
     q = u.callback_query; await q.answer()
     await q.edit_message_text(
-        "1️⃣ <b>جنسیتت چیه؟</b>",
+        "━━━━━━━━━━━━━━━\n1️⃣  <b>جنسیت</b>\n━━━━━━━━━━━━━━━\nکدوم گزینه توی؟",
         reply_markup=mkb(["Male", "Female"]),
         parse_mode=ParseMode.HTML
     )
@@ -586,7 +627,7 @@ async def q_age(u, c):
     q = u.callback_query; await q.answer()
     c.user_data['gender'] = q.data
     await q.edit_message_text(
-        "2️⃣ <b>چند سالته؟</b>",
+        "━━━━━━━━━━━━━━━\n2️⃣  <b>رده سنی</b>\n━━━━━━━━━━━━━━━\nچند سالته؟",
         reply_markup=mkb(["-18", "18-25"], ["25-35", "+35"]),
         parse_mode=ParseMode.HTML
     )
@@ -596,7 +637,7 @@ async def q_location(u, c):
     q = u.callback_query; await q.answer()
     c.user_data['age'] = q.data
     await q.edit_message_text(
-        "3️⃣ <b>کجا زندگی می‌کنی؟</b>",
+        "━━━━━━━━━━━━━━━\n3️⃣  <b>موقعیت مکانی</b>\n━━━━━━━━━━━━━━━\nکجا زندگی می‌کنی؟",
         reply_markup=mkb(["Tehran", "City"], ["Other", "Abroad"]),
         parse_mode=ParseMode.HTML
     )
@@ -606,7 +647,7 @@ async def q_status(u, c):
     q = u.callback_query; await q.answer()
     c.user_data['location'] = q.data
     await q.edit_message_text(
-        "4️⃣ <b>وضعیت تاهل؟</b>",
+        "━━━━━━━━━━━━━━━\n4️⃣  <b>وضعیت رابطه</b>\n━━━━━━━━━━━━━━━\nالان چه وضعیتی داری؟",
         reply_markup=mkb(["Single", "InRel"], ["Married", "Complicated"]),
         parse_mode=ParseMode.HTML
     )
@@ -616,7 +657,7 @@ async def q_interest(u, c):
     q = u.callback_query; await q.answer()
     c.user_data['status'] = q.data
     await q.edit_message_text(
-        "5️⃣ <b>علاقه اصلیت چیه؟</b>",
+        "━━━━━━━━━━━━━━━\n5️⃣  <b>علاقه اصلی</b>\n━━━━━━━━━━━━━━━\nوقت آزادت بیشتر چیکار می‌کنی؟",
         reply_markup=mkb(["Game", "Movie"], ["Art", "Tech"], ["Sport", "Trade"]),
         parse_mode=ParseMode.HTML
     )
@@ -626,7 +667,7 @@ async def q_music(u, c):
     q = u.callback_query; await q.answer()
     c.user_data['interest'] = q.data
     await q.edit_message_text(
-        "6️⃣ <b>سلیقه موزیکت؟</b>",
+        "━━━━━━━━━━━━━━━\n6️⃣  <b>سبک موزیک</b>\n━━━━━━━━━━━━━━━\nبیشتر چه موزیکی گوش میدی؟",
         reply_markup=mkb(["Rap", "Pop"], ["Rock", "Electro"]),
         parse_mode=ParseMode.HTML
     )
@@ -636,7 +677,7 @@ async def q_personality(u, c):
     q = u.callback_query; await q.answer()
     c.user_data['music'] = q.data
     await q.edit_message_text(
-        "7️⃣ <b>تیپ شخصیتیت؟</b>",
+        "━━━━━━━━━━━━━━━\n7️⃣  <b>تیپ شخصیتی</b>\n━━━━━━━━━━━━━━━\nبیشتر به کدوم شبیهی؟",
         reply_markup=mkb(["Extrovert", "Introvert"], ["Logical", "Emotional"]),
         parse_mode=ParseMode.HTML
     )
@@ -646,7 +687,7 @@ async def q_vacation(u, c):
     q = u.callback_query; await q.answer()
     c.user_data['personality'] = q.data
     await q.edit_message_text(
-        "8️⃣ <b>تعطیلات کجا باشی؟ ✈️</b>",
+        "━━━━━━━━━━━━━━━\n8️⃣  <b>سبک تعطیلات</b>\n━━━━━━━━━━━━━━━\nتعطیلات ایده‌آلت کدومه؟",
         reply_markup=mkb(["Vac_Cafe", "Vac_Shomal"], ["Vac_Dubai", "Vac_Home"]),
         parse_mode=ParseMode.HTML
     )
@@ -656,7 +697,7 @@ async def q_phone(u, c):
     q = u.callback_query; await q.answer()
     c.user_data['vacation'] = q.data
     await q.edit_message_text(
-        "9️⃣ <b>طرفدار کدوم برندی؟ 📱</b>",
+        "━━━━━━━━━━━━━━━\n9️⃣  <b>گوشی موبایل</b>\n━━━━━━━━━━━━━━━\nطرفدار کدوم تیمی؟",
         reply_markup=mkb(["Phone_Apple", "Phone_Android"], ["Phone_None"]),
         parse_mode=ParseMode.HTML
     )
@@ -687,7 +728,7 @@ async def finish_reg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             logger.warning(f"inviter reward: {e}")
 
     await q.edit_message_text(
-        "✅ <b>پروفایل شما ساخته شد!</b>\n\n🔍 دارم برات هم‌فاز پیدا می‌کنم...",
+        "✅ <b>پروفایل شما ساخته شد!</b>\n\n━━━━━━━━━━━━━━━\n🔍 دارم از بین کاربرا بهترین هم‌فاز رو برات پیدا می‌کنم...",
         parse_mode=ParseMode.HTML
     )
     await do_find_match(update, context)
@@ -969,6 +1010,14 @@ async def main_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # بن چک
     if is_banned(uid):
         await update.message.reply_text("🚫 حساب شما مسدود است.")
+        return
+
+    # کاربر ثبت‌نام نکرده — فقط /start قبول کن
+    if not user_exists(uid) and text and not text.startswith('/'):
+        await update.message.reply_text(
+            "👋 برای شروع روی /start بزن و ثبت‌نام کن!",
+            reply_markup=ReplyKeyboardRemove()
+        )
         return
 
     # ──── دکمه‌های کیبورد ────
