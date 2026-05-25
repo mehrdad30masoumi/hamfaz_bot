@@ -26,8 +26,8 @@ from telegram.ext import (
 # ══════════════════════════════════════════════════════════
 #  ۱. تنظیمات — فقط این بخش رو ویرایش کن
 # ══════════════════════════════════════════════════════════
-TOKEN     = '8360983813:AAGTx7aI4rW-CSbZN6_epxnevFEEG3Ruc8c'
-ADMIN_ID  = 1617627229
+TOKEN     = 'TOKEN_KHODET_RO_INJA_BZAR'
+ADMIN_ID  = 123456789
 DB_PATH   = 'hamfaz.db'
 
 # Channel Lock — برای غیرفعال کردن: None بذار
@@ -542,7 +542,7 @@ async def handle_anon(update: Update, context: ContextTypes.DEFAULT_TYPE):
             int(tid), "📩 <b>یه پیام ناشناس جدید داری! 👇</b>",
             parse_mode=ParseMode.HTML
         )
-        await update.message.copy_message(chat_id=int(tid))
+        await context.bot.copy_message(chat_id=int(tid), from_chat_id=uid, message_id=update.message.message_id)
     except Exception as e:
         logger.warning(f"anon send: {e}")
 
@@ -944,7 +944,7 @@ async def bc_send(update: Update, context: ContextTypes.DEFAULT_TYPE):
     sent = failed = 0
     for uid in ids:
         try:
-            await update.message.copy_message(chat_id=uid)
+            await context.bot.copy_message(chat_id=uid, from_chat_id=update.effective_user.id, message_id=update.message.message_id)
             sent += 1
         except:
             failed += 1
@@ -1048,11 +1048,13 @@ async def main_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     await update.message.reply_text("⚠️ ارسال لینک و منشن مجاز نیست.")
                     return
 
-        # ارسال پیام
-        logger.info(f"[CHAT] {uid} -> {partner} | pairs={dict(list(connected_pairs.items())[:6])}")
+        # ارسال پیام — سازگار با همه نسخه‌های کتابخانه
         try:
-            await update.message.copy_message(chat_id=partner)
-            logger.info(f"[CHAT] OK: {uid} -> {partner}")
+            await context.bot.copy_message(
+                chat_id=partner,
+                from_chat_id=uid,
+                message_id=update.message.message_id
+            )
         except Exception as e:
             logger.warning(f"[CHAT] ERROR {uid}->{partner}: {e}")
             if "bot was blocked" in str(e).lower() or "user is deactivated" in str(e).lower():
