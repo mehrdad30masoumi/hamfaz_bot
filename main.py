@@ -26,8 +26,8 @@ from telegram.ext import (
 # ══════════════════════════════════════════════════════════
 #  ۱. تنظیمات — فقط این بخش رو ویرایش کن
 # ══════════════════════════════════════════════════════════
-TOKEN     = 'TOKEN_KHODET_RO_INJA_BZAR'
-ADMIN_ID  = 123456789
+TOKEN     = '8360983813:AAGTx7aI4rW-CSbZN6_epxnevFEEG3Ruc8c'
+ADMIN_ID  = 1617627229
 DB_PATH   = 'hamfaz.db'
 
 # Channel Lock — برای غیرفعال کردن: None بذار
