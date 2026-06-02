@@ -27,7 +27,7 @@ from telegram.ext import (
 #  ۱. تنظیمات — فقط این بخش رو ویرایش کن
 # ══════════════════════════════════════════════════════════
 TOKEN     = '8360983813:AAGTx7aI4rW-CSbZN6_epxnevFEEG3Ruc8c'
-ADMIN_ID  = 1617627229
+ADMIN_ID  =  1617627229
 DB_PATH   = os.environ.get('DB_PATH', 'hamfaz.db')
 
 # Channel Lock — برای غیرفعال کردن: None بذار
@@ -128,6 +128,53 @@ def init_db():
                 reports     INTEGER DEFAULT 0,
                 is_banned   INTEGER DEFAULT 0,
                 joined_at   TEXT    DEFAULT (datetime('now'))
+            )
+        ''')
+        conn.commit()
+
+def get_active_ad(gender=None, age=None, interest=None):
+    """پیدا کردن یه آگهی مناسب برای نمایش"""
+    try:
+        conds  = ["is_active=1"]
+        params = []
+        if gender:
+            conds.append("(gender_filter='all' OR gender_filter=?)")
+            params.append(gender)
+        if age:
+            conds.append("(age_filter='all' OR age_filter=?)")
+            params.append(age)
+        where = "WHERE " + " AND ".join(conds)
+        with db() as conn:
+            row = conn.execute(
+                f"SELECT * FROM ads {where} ORDER BY RANDOM() LIMIT 1", params
+            ).fetchone()
+            if row:
+                conn.execute(
+                    "UPDATE ads SET impressions=impressions+1 WHERE id=?", (row[0],)
+                )
+                conn.commit()
+                return dict(row) if hasattr(row, 'keys') else {
+                    'id': row[0], 'name': row[1], 'text': row[2],
+                    'link': row[3], 'gender_filter': row[4], 'age_filter': row[5]
+                }
+    except:
+        pass
+    return None
+
+def init_ads_table():
+    with db() as conn:
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS ads (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                name          TEXT,
+                text          TEXT,
+                link          TEXT DEFAULT \'\',
+                gender_filter TEXT DEFAULT \'all\',
+                age_filter    TEXT DEFAULT \'all\',
+                impressions   INTEGER DEFAULT 0,
+                clicks        INTEGER DEFAULT 0,
+                is_active     INTEGER DEFAULT 1,
+                created_at    TEXT DEFAULT (datetime(\'now\'))
             )
         ''')
         conn.commit()
@@ -816,6 +863,77 @@ async def vip_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ══════════════════════════════════════════════════════════
 #  ۱۲. کارما و ریپورت
 # ══════════════════════════════════════════════════════════
+async def cb_ai_analysis(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """تحلیل شخصیت با Claude API"""
+    query = update.callback_query
+    uid   = query.from_user.id
+    await query.answer("🧠 در حال تحلیل...")
+
+    u = get_user(uid)
+    if not u:
+        await query.edit_message_reply_markup(None)
+        return
+
+    # ساخت prompt برای Claude
+    profile_text = (
+        f"جنسیت: {TRANS.get(u['gender'],'')} | "
+        f"سن: {TRANS.get(u['age'],'')} | "
+        f"شهر: {TRANS.get(u['location'],'')} | "
+        f"وضعیت: {TRANS.get(u['status'],'')} | "
+        f"علاقه: {TRANS.get(u['interest'],'')} | "
+        f"موزیک: {TRANS.get(u['music'],'')} | "
+        f"شخصیت: {TRANS.get(u['personality'],'')} | "
+        f"تعطیلات: {TRANS.get(u['vacation'],'')} | "
+        f"کارما: {u['karma']}"
+    )
+
+    try:
+        import httpx
+        ai_token = os.environ.get('ANTHROPIC_KEY', '')
+        if not ai_token:
+            await context.bot.send_message(
+                uid,
+                "⚠️ سرویس AI هنوز تنظیم نشده. با ادمین تماس بگیر."
+            )
+            return
+
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={
+                    "x-api-key": ai_token,
+                    "anthropic-version": "2023-06-01",
+                    "content-type": "application/json"
+                },
+                json={
+                    "model": "claude-haiku-4-5-20251001",
+                    "max_tokens": 300,
+                    "messages": [{
+                        "role": "user",
+                        "content": (
+                            f"بر اساس این پروفایل، یه تحلیل شخصیتی کوتاه و جذاب به فارسی بنویس (حداکثر ۱۵۰ کلمه). "
+                            f"صمیمی و دوستانه باش. از اول شخص مخاطب (تو) استفاده کن.\n\n"
+                            f"پروفایل: {profile_text}"
+                        )
+                    }]
+                }
+            )
+            result = resp.json()
+            analysis = result['content'][0]['text']
+
+        await context.bot.send_message(
+            uid,
+            f"🧠 <b>تحلیل شخصیت شما توسط AI:</b>\n\n"
+            f"━━━━━━━━━━━━━━━\n"
+            f"{analysis}\n\n"
+            f"━━━━━━━━━━━━━━━\n"
+            f"<i>این تحلیل بر اساس پاسخ‌های ثبت‌نام شماست.</i>",
+            parse_mode=ParseMode.HTML
+        )
+    except Exception as e:
+        logger.warning(f"AI analysis error: {e}")
+        await context.bot.send_message(uid, "⚠️ خطا در اتصال به سرویس AI. دوباره امتحان کن.")
+
 async def cb_karma(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q      = update.callback_query
     voter  = q.from_user.id
@@ -1022,9 +1140,14 @@ async def main_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # ──── دکمه‌های کیبورد ────
     if text == "👤 پروفایل من":
+        dashboard_text = my_dashboard(uid, context.bot.username)
+        # دکمه تحلیل شخصیتی AI
+        ai_kb = InlineKeyboardMarkup([[
+            InlineKeyboardButton("🧠 تحلیل شخصیت با AI", callback_data=f"ai_analysis_{uid}")
+        ]])
         await update.message.reply_text(
-            my_dashboard(uid, context.bot.username),
-            parse_mode=ParseMode.HTML, reply_markup=main_kb()
+            dashboard_text,
+            parse_mode=ParseMode.HTML, reply_markup=ai_kb
         )
         return
 
@@ -1072,9 +1195,32 @@ async def main_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await do_disconnect(uid, context.bot, notify=True)
         if text == "➡️ نفر بعدی":
             try:
-                await update.message.reply_text(AD_TEXT, parse_mode=ParseMode.HTML)
-            except:
-                pass
+                # آگهی هدفمند بر اساس پروفایل کاربر
+                u_info = get_user(uid)
+                ad = None
+                if u_info:
+                    ad = get_active_ad(
+                        gender=u_info.get('gender'),
+                        age=u_info.get('age'),
+                        interest=u_info.get('interest')
+                    )
+                if ad:
+                    ad_text = (
+                        f"📢 <b>پیام حامی هم‌فاز:</b>\n\n"
+                        f"{ad['text']}"
+                    )
+                    if ad.get('link'):
+                        from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+                        kb_ad = InlineKeyboardMarkup([[
+                            InlineKeyboardButton("🔗 مشاهده", url=ad['link'])
+                        ]])
+                        await update.message.reply_text(ad_text, reply_markup=kb_ad, parse_mode=ParseMode.HTML)
+                    else:
+                        await update.message.reply_text(ad_text, parse_mode=ParseMode.HTML)
+                else:
+                    await update.message.reply_text(AD_TEXT, parse_mode=ParseMode.HTML)
+            except Exception as e:
+                logger.warning(f"ad show error: {e}")
             await do_find_match(update, context)
         else:
             await update.message.reply_text("⛔️ مکالمه قطع شد.", reply_markup=main_kb())
@@ -1130,6 +1276,7 @@ async def main_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ══════════════════════════════════════════════════════════
 if __name__ == '__main__':
     init_db()
+    init_ads_table()
 
     app = ApplicationBuilder().token(TOKEN).build()
 
@@ -1188,5 +1335,8 @@ if __name__ == '__main__':
     app.add_handler(CallbackQueryHandler(cb_report,     pattern='^report_'))
     app.add_handler(MessageHandler(filters.ALL & ~filters.COMMAND, main_handler))
 
-    print("🚀 ربات هم‌فاز — نسخه نهایی در حال اجراست...")
+    # اضافه کردن handler تحلیل AI
+    app.add_handler(CallbackQueryHandler(cb_ai_analysis, pattern='^ai_analysis_'))
+
+    print("🚀 ربات هم‌فاز — نسخه نهایی + AI + تبلیغات هوشمند در حال اجراست...")
     app.run_polling(drop_pending_updates=True)
